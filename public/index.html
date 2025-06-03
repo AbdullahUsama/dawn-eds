@@ -152,34 +152,38 @@
         statusDiv.style.display = 'none';
         
         // In your index.html script section, update the fetch call:
-try {
-    const response = await fetch('/generate', { // Update this line
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            startDate: formatDate(new Date(startDate)),
-            endDate: formatDate(new Date(endDate)),
-            email
-        })
-    });
-
-    const data = await response.json();
     
-            
-            statusDiv.style.display = 'block';
-            statusDiv.className = data.success ? 'success' : 'error';
-            statusDiv.textContent = data.message;
-        } catch (error) {
-            statusDiv.style.display = 'block';
-            statusDiv.className = 'error';
-            statusDiv.textContent = 'An error occurred while processing your request';
-        } finally {
-            submitButton.disabled = false;
-            submitButton.textContent = 'Generate and Send PDF';
+    try {
+        const response = await fetch('/generate', {  // Update the endpoint
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                startDate: formatDate(new Date(startDate)),
+                endDate: formatDate(new Date(endDate)),
+                email
+            })
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.message || 'Server error occurred');
         }
-    });
+        
+        statusDiv.style.display = 'block';
+        statusDiv.className = data.success ? 'success' : 'error';
+        statusDiv.textContent = data.message;
+    } catch (error) {
+        console.error('Error details:', error);
+        statusDiv.style.display = 'block';
+        statusDiv.className = 'error';
+        statusDiv.textContent = error.message || 'An error occurred while processing your request';
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Generate and Send PDF';
+    }
 </script>
 </body>
 </html>

@@ -5,7 +5,10 @@
     { "src": "public/**", "use": "@vercel/static" }
   ],
   "routes": [
-    { "src": "/generate", "dest": "/api/generate.js" },
+    { "src": "/generate", "dest": "/generate.js" },
     { "src": "/(.*)", "dest": "/public/$1" }
-  ]
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
 }
