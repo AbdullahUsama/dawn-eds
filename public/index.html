@@ -87,66 +87,53 @@
         const endDate = document.getElementById('endDate').value;
         const email = document.getElementById('email').value;
 
-        // Enhanced validation
-        if (!startDate || !endDate || !email) {
-            statusDiv.style.display = 'block';
-            statusDiv.className = 'error';
-            statusDiv.textContent = 'Please fill in all fields';
-            return;
-        }
-
-        // Validate date range
-        const startDateTime = new Date(startDate).getTime();
-        const endDateTime = new Date(endDate).getTime();
-        if (endDateTime < startDateTime) {
-            statusDiv.style.display = 'block';
-            statusDiv.className = 'error';
-            statusDiv.textContent = 'End date must be after start date';
-            return;
-        }
-
         submitButton.disabled = true;
         submitButton.textContent = 'Processing...';
         statusDiv.style.display = 'none';
         
-      try {
-    const response = await fetch('/api/generate', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            startDate: formatDate(new Date(startDate)),
-            endDate: formatDate(new Date(endDate)),
-            email
-        })
-    });
+        try {
+            const response = await fetch('/api/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    startDate: formatDate(new Date(startDate)),
+                    endDate: formatDate(new Date(endDate)),
+                    email
+                })
+            });
 
-    let data;
-    try {
-        data = await response.json();
-    } catch (parseError) {
-        throw new Error('Failed to parse server response');
-    }
+            // First check if the response is ok
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorMessage;
+                try {
+                    const errorData = JSON.parse(errorText);
+                    errorMessage = errorData.message || `Server error (${response.status})`;
+                } catch (e) {
+                    errorMessage = `Server error (${response.status}): ${errorText}`;
+                }
+                throw new Error(errorMessage);
+            }
 
-    if (!response.ok) {
-        throw new Error(data.message || `Server error (${response.status})`);
-    }
-
-    statusDiv.style.display = 'block';
-    statusDiv.className = 'success';
-    statusDiv.textContent = data.message;
-} catch (error) {
-    console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-    });
-    
-    statusDiv.style.display = 'block';
-    statusDiv.className = 'error';
-    statusDiv.textContent = error.message || 'An unexpected error occurred';
-}finally {
+            // Try to parse the response as JSON
+            const data = await response.json();
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'success';
+            statusDiv.textContent = data.message;
+        } catch (error) {
+            console.error('Error details:', {
+                message: error.message,
+                stack: error.stack,
+                name: error.name
+            });
+            
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'error';
+            statusDiv.textContent = error.message || 'An unexpected error occurred';
+        } finally {
             submitButton.disabled = false;
             submitButton.textContent = 'Generate and Send PDF';
         }

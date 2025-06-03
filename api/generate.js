@@ -1,11 +1,10 @@
 import { connectToMongo } from '../db.js';
 import { runAll } from '../app.js';
-export default async function handler(req, res) {
-    // Add error logging
-    process.on('unhandledRejection', (reason, promise) => {
-        console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-    });
 
+export default async function handler(req, res) {
+    // Set proper content type for JSON responses
+    res.setHeader('Content-Type', 'application/json');
+    
     // Add CORS headers
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -13,12 +12,10 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
 
     if (req.method === 'OPTIONS') {
-        res.status(200).end();
-        return;
+        return res.status(200).json({ status: 'ok' });
     }
 
     try {
-        // Validate request method
         if (req.method !== 'POST') {
             return res.status(405).json({ 
                 success: false, 
@@ -26,7 +23,9 @@ export default async function handler(req, res) {
             });
         }
 
-        // Validate request body
+        const { startDate, endDate, email } = req.body || {};
+
+        // Enhanced validation with specific messages
         if (!req.body) {
             return res.status(400).json({
                 success: false,
@@ -34,53 +33,39 @@ export default async function handler(req, res) {
             });
         }
 
-        const { startDate, endDate, email } = req.body;
-
-        // Log received data
-        console.log('Received request with data:', {
-            startDate,
-            endDate,
-            email,
-            bodyType: typeof req.body,
-            contentType: req.headers['content-type']
-        });
-
-        // Validate required fields
         if (!startDate || !endDate || !email) {
             return res.status(400).json({ 
                 success: false, 
                 message: 'Missing required fields',
-                received: { startDate, endDate, email }
+                details: {
+                    startDate: !startDate ? 'missing' : 'ok',
+                    endDate: !endDate ? 'missing' : 'ok',
+                    email: !email ? 'missing' : 'ok'
+                }
             });
         }
 
         // Connect to MongoDB
-        console.log('Connecting to MongoDB...');
         await connectToMongo();
 
         // Run the main process
-        console.log(`Processing request for dates: ${startDate} to ${endDate}`);
         await runAll(startDate, endDate, email, false, true);
         
-        // Send success response
-        res.status(200).json({ 
+        return res.status(200).json({ 
             success: true, 
             message: 'Process started! You will receive an email shortly.' 
         });
     } catch (error) {
-        // Enhanced error logging
         console.error('API Error:', {
             message: error.message,
             stack: error.stack,
-            name: error.name,
-            code: error.code
+            name: error.name
         });
         
-        // Send error response
-        res.status(500).json({ 
+        return res.status(500).json({ 
             success: false, 
             message: error.message || 'Internal server error',
-            errorCode: error.code
+            error: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 }
