@@ -19,27 +19,31 @@ export default async function handler(req, res) {
         return res.status(405).json({ success: false, message: 'Method not allowed' });
     }
 
-    const { startDate, endDate, email } = req.body;
-    
-    if (!startDate || !endDate || !email) {
-        return res.status(400).json({ 
-            success: false, 
-            message: 'Missing required fields' 
-        });
-    }
+       try {
+        // Ensure MongoDB is connected first
+        await connectToMongo();
+        
+        const { startDate, endDate, email } = req.body;
+        
+        if (!startDate || !endDate || !email) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Missing required fields' 
+            });
+        }
 
-    try {
         console.log(`Processing request for dates: ${startDate} to ${endDate}`);
-        await runAll(startDate, endDate, email);
+        await runAll(startDate, endDate, email, false); // Pass false to prevent DB closing
+        
         res.json({ 
             success: true, 
             message: 'Process started! You will receive an email shortly.' 
         });
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Detailed error:', error);
         res.status(500).json({ 
             success: false, 
-            message: 'An error occurred while processing your request' 
+            message: error.message || 'An error occurred while processing your request'
         });
     }
 }
