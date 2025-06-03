@@ -24,7 +24,6 @@
         label {
             display: block;
             margin-bottom: 8px;
-            color: #555;
             font-weight: bold;
         }
         input {
@@ -42,15 +41,6 @@
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
         }
         #status {
             margin-top: 20px;
@@ -58,132 +48,84 @@
             border-radius: 4px;
             display: none;
         }
-        .success {
-            background-color: #dff0d8;
-            color: #3c763d;
-            border: 1px solid #d6e9c6;
-        }
-        .error {
-            background-color: #f2dede;
-            color: #a94442;
-            border: 1px solid #ebccd1;
-        }
+        .success { background-color: #dff0d8; color: #3c763d; }
+        .error { background-color: #f2dede; color: #a94442; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Dawn Editorial Vocabulary Generator</h1>
         <form id="generatorForm">
-           <div class="form-group">
-    <label for="startDate">Start Date:</label>
-    <input 
-        type="date" 
-        id="startDate" 
-        name="startDate" 
-        required
-        pattern="\d{4}-\d{2}-\d{2}"
-        title="Please enter a date in YYYY-MM-DD format"
-    >
-</div>
-<div class="form-group">
-    <label for="endDate">End Date:</label>
-    <input 
-        type="date" 
-        id="endDate" 
-        name="endDate" 
-        required
-        pattern="\d{4}-\d{2}-\d{2}"
-        title="Please enter a date in YYYY-MM-DD format"
-    >
-</div>
+            <div class="form-group">
+                <label for="startDate">Start Date:</label>
+                <input type="date" id="startDate" name="startDate" required>
+            </div>
+            <div class="form-group">
+                <label for="endDate">End Date:</label>
+                <input type="date" id="endDate" name="endDate" required>
+            </div>
             <div class="form-group">
                 <label for="email">Recipient Email:</label>
-                <input type="email" id="email" name="email" required 
-                       placeholder="Enter your email address">
+                <input type="email" id="email" name="email" required>
             </div>
             <button type="submit">Generate and Send PDF</button>
         </form>
-        <!-- Added status div here -->
         <div id="status"></div>
     </div>
 
     <script>
-    // Add this helper function at the top of your script
-    function formatDate(date) {
-        return date.toISOString().split('T')[0];
-    }
-
-    document.getElementById('generatorForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const statusDiv = document.getElementById('status');
-        const submitButton = e.target.querySelector('button');
-        
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
-        const email = document.getElementById('email').value;
-
-        // Validate date format
-        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-        if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
-            statusDiv.style.display = 'block';
-            statusDiv.className = 'error';
-            statusDiv.textContent = 'Dates must be in YYYY-MM-DD format';
-            return;
+        function formatDate(date) {
+            return date.toISOString().split('T')[0];
         }
 
-        // Rest of your existing validation
-        if (!startDate || !endDate || !email) {
-            statusDiv.style.display = 'block';
-            statusDiv.className = 'error';
-            statusDiv.textContent = 'Please fill in all fields';
-            return;
-        }
+        document.getElementById('generatorForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const statusDiv = document.getElementById('status');
+            const submitButton = e.target.querySelector('button');
+            
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const email = document.getElementById('email').value;
 
-        // Validate date range
-        if (new Date(endDate) < new Date(startDate)) {
-            statusDiv.style.display = 'block';
-            statusDiv.className = 'error';
-            statusDiv.textContent = 'End date must be after start date';
-            return;
-        }
+            // Validate inputs
+            if (!startDate || !endDate || !email) {
+                statusDiv.style.display = 'block';
+                statusDiv.className = 'error';
+                statusDiv.textContent = 'Please fill in all fields';
+                return;
+            }
 
-        submitButton.disabled = true;
-        submitButton.textContent = 'Processing...';
-        statusDiv.style.display = 'none';
-        
-        // In your index.html script section, update the fetch call:
-    
-    try {
-        const response = await fetch('/generate', {  // Update the endpoint
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                startDate: formatDate(new Date(startDate)),
-                endDate: formatDate(new Date(endDate)),
-                email
-            })
+            submitButton.disabled = true;
+            submitButton.textContent = 'Processing...';
+            statusDiv.style.display = 'none';
+            
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        startDate: formatDate(new Date(startDate)),
+                        endDate: formatDate(new Date(endDate)),
+                        email
+                    })
+                });
+
+                const data = await response.json();
+                
+                statusDiv.style.display = 'block';
+                statusDiv.className = data.success ? 'success' : 'error';
+                statusDiv.textContent = data.message;
+            } catch (error) {
+                statusDiv.style.display = 'block';
+                statusDiv.className = 'error';
+                statusDiv.textContent = 'An error occurred while processing your request';
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Generate and Send PDF';
+            }
         });
-
-        const data = await response.json();
-        
-        if (!response.ok) {
-            throw new Error(data.message || 'Server error occurred');
-        }
-        
-        statusDiv.style.display = 'block';
-        statusDiv.className = data.success ? 'success' : 'error';
-        statusDiv.textContent = data.message;
-    } catch (error) {
-        console.error('Error details:', error);
-        statusDiv.style.display = 'block';
-        statusDiv.className = 'error';
-        statusDiv.textContent = error.message || 'An error occurred while processing your request';
-    } finally {
-        submitButton.disabled = false;
-        submitButton.textContent = 'Generate and Send PDF';
-    }
-</script>
+    </script>
 </body>
 </html>
