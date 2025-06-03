@@ -1,5 +1,9 @@
 import { connectToMongo } from '../db.js';
 import { runAll } from '../app.js';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default async function handler(req, res) {
     // Set proper content type for JSON responses

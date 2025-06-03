@@ -91,19 +91,20 @@
         submitButton.textContent = 'Processing...';
         statusDiv.style.display = 'none';
         //hehe
-        try {
-            const response = await fetch('/api/generate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    startDate: formatDate(new Date(startDate)),
-                    endDate: formatDate(new Date(endDate)),
-                    email
-                })
-            });
+       try {
+    const baseUrl = window.location.origin;
+    const response = await fetch(`${baseUrl}/api/generate`, {  // Use dynamic base URL
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+            startDate: formatDate(new Date(startDate)),
+            endDate: formatDate(new Date(endDate)),
+            email
+        })
+    });
 
             // First check if the response is ok
             if (!response.ok) {

@@ -1,23 +1,20 @@
 {
   "version": 2,
   "builds": [
-    { "src": "/api/generate.js", "use": "@vercel/node" },
+    { "src": "api/**/*.js", "use": "@vercel/node" },
     { "src": "public/**", "use": "@vercel/static" }
   ],
   "routes": [
     {
-      "src": "/api/generate.js",
+      "src": "/api/generate", 
       "methods": ["POST", "OPTIONS"],
       "headers": {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Headers": "Content-Type, Accept",
         "Access-Control-Allow-Methods": "POST, OPTIONS"
       },
-      "dest": "/api/generate.js"
+      "dest": "api/generate.js"  
     },
     { "src": "/(.*)", "dest": "public/$1" }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }
