@@ -5,21 +5,32 @@ import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+// Add global error handler
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 export default async function handler(req, res) {
-    // Set proper content type for JSON responses
+    // Add request logging
+    console.log('Incoming request:', {
+        method: req.method,
+        headers: req.headers,
+        body: req.body
+    });
+
+    // Set response headers
     res.setHeader('Content-Type', 'application/json');
-    
-    // Add CORS headers
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
 
     if (req.method === 'OPTIONS') {
-        return res.status(200).json({ status: 'ok' });
+        return res.status(200).end();
     }
 
     try {
+        // Validate request method
         if (req.method !== 'POST') {
             return res.status(405).json({ 
                 success: false, 
@@ -27,9 +38,9 @@ export default async function handler(req, res) {
             });
         }
 
-        const { startDate, endDate, email } = req.body || {};
-
-        // Enhanced validation with specific messages
+        // Log and validate request body
+        console.log('Request body:', req.body);
+        
         if (!req.body) {
             return res.status(400).json({
                 success: false,
@@ -37,6 +48,9 @@ export default async function handler(req, res) {
             });
         }
 
+        const { startDate, endDate, email } = req.body;
+
+        // Validate required fields
         if (!startDate || !endDate || !email) {
             return res.status(400).json({ 
                 success: false, 
@@ -49,27 +63,55 @@ export default async function handler(req, res) {
             });
         }
 
-        // Connect to MongoDB
-        await connectToMongo();
+        // Try MongoDB connection
+        console.log('Attempting MongoDB connection...');
+        try {
+            await connectToMongo();
+            console.log('MongoDB connected successfully');
+        } catch (dbError) {
+            console.error('MongoDB connection error:', dbError);
+            return res.status(500).json({
+                success: false,
+                message: 'Database connection failed',
+                error: dbError.message
+            });
+        }
 
-        // Run the main process
-        await runAll(startDate, endDate, email, false, true);
-        
+        // Run main process with error handling
+        console.log('Starting runAll process...');
+        try {
+            await runAll(startDate, endDate, email, false, true);
+            console.log('runAll completed successfully');
+        } catch (processError) {
+            console.error('runAll process error:', processError);
+            return res.status(500).json({
+                success: false,
+                message: 'Process execution failed',
+                error: processError.message
+            });
+        }
+
         return res.status(200).json({ 
             success: true, 
             message: 'Process started! You will receive an email shortly.' 
         });
     } catch (error) {
+        // Enhanced error logging
         console.error('API Error:', {
             message: error.message,
             stack: error.stack,
-            name: error.name
+            name: error.name,
+            code: error.code
         });
         
         return res.status(500).json({ 
             success: false, 
-            message: error.message || 'Internal server error',
-            error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            message: 'Internal server error: ' + error.message,
+            error: process.env.NODE_ENV === 'development' ? {
+                name: error.name,
+                stack: error.stack,
+                code: error.code
+            } : undefined
         });
     }
 }
