@@ -19,8 +19,7 @@ export default async function handler(req, res) {
         return res.status(405).json({ success: false, message: 'Method not allowed' });
     }
 
-       try {
-        // Ensure MongoDB is connected first
+          try {
         await connectToMongo();
         
         const { startDate, endDate, email } = req.body;
@@ -32,8 +31,8 @@ export default async function handler(req, res) {
             });
         }
 
-        console.log(`Processing request for dates: ${startDate} to ${endDate}`);
-        await runAll(startDate, endDate, email, false); // Pass false to prevent DB closing
+        // Pass an additional parameter to indicate we're running on Vercel
+        await runAll(startDate, endDate, email, false, true); // Last param: isVercel = true
         
         res.json({ 
             success: true, 

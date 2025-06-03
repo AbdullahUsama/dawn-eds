@@ -6,6 +6,7 @@ import PDFDocument from "pdfkit";
 import fs from "fs";
 import nodemailer from 'nodemailer';
 import { closeMongo } from './db.js';
+import { Readable } from 'stream';
 
 
 // Import configurations and database functions
@@ -361,33 +362,107 @@ async function sendPdfByEmail(pdfPath, recipientEmail, senderName = "Dawn News B
  * @param {string} recipientEmail - The email address to send the PDF to.
  * @param {boolean} [closeDb=true] - Whether to close the DB connection after completion.
  */
-async function runAll(startDate, endDate, recipientEmail) {
-    console.log(`🚀 Starting Dawn Editorial Scraper for ${startDate} to ${endDate}...`);
+// Modify the runAll function
+async function runAll(startDate, endDate, recipientEmail, closeDb = true, isVercel = false) {
+    try {
+        console.log(`🚀 Starting process for ${startDate} to ${endDate}...`);
+        
+        // 1. Scrape and process articles with AI
+        const articlesData = await mainScrapingAndAI(startDate, endDate);
+        
+        // 2. Generate PDF in memory when on Vercel
+        let pdfBuffer;
+        if (isVercel) {
+            // Generate PDF in memory
+            pdfBuffer = await generatePDFInMemory(articlesData, startDate, endDate);
+        } else {
+            // Generate PDF as file when running locally
+            await loadDataAndGeneratePDF(FILE_PATHS.JSON_OUTPUT, FILE_PATHS.PDF_OUTPUT, startDate, endDate);
+        }
 
-    // Ensure MongoDB is connected first
-    await connectToMongo();
+        // 3. Send email
+        if (recipientEmail) {
+            if (isVercel) {
+                // Send using buffer
+                await sendPdfByEmailWithBuffer(pdfBuffer, recipientEmail);
+            } else {
+                // Send using file
+                await sendPdfByEmail(FILE_PATHS.PDF_OUTPUT, recipientEmail);
+            }
+        }
 
-    // 1. Scrape and process articles with AI
-    await mainScrapingAndAI(startDate, endDate); // Renamed from 'main' to avoid conflict and be more descriptive
-
-    // 2. Generate PDF from saved JSON
-    loadDataAndGeneratePDF(FILE_PATHS.JSON_OUTPUT, FILE_PATHS.PDF_OUTPUT, startDate, endDate);
-    console.log(`PDF generation complete. File saved at: ${FILE_PATHS.PDF_OUTPUT}`);
-
-    // 3. Send PDF via email
-    if (recipientEmail) {
-        await sendPdfByEmail(FILE_PATHS.PDF_OUTPUT, recipientEmail);
-    } else {
-        console.log("No recipient email provided. Skipping email sending.");
+        if (closeDb) {
+            await closeMongo();
+        }
+    } catch (error) {
+        console.error('Error in runAll:', error);
+        throw error;
     }
-
-    console.log("✅ Process completed.");
-    await closeMongo();
-    // if (closeDb) {
-    //     await closeMongo();
-    //     console.log("MongoDB connection closed.");
-    // }
 }
+
+// Add new function to generate PDF in memory
+async function generatePDFInMemory(articlesData, startDate, endDate) {
+    return new Promise((resolve, reject) => {
+        const chunks = [];
+        const doc = new PDFDocument();
+        
+        doc.on('data', chunk => chunks.push(chunk));
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+        doc.on('error', reject);
+
+        // Your existing PDF generation logic here
+        doc.font('Times-Bold').fontSize(24).text("Editorial Articles Vocabulary", {
+            align: "center",
+        });
+        // ...rest of your PDF generation code...
+
+        doc.end();
+    });
+
+}
+
+// Add new function to send email with buffer
+async function sendPdfByEmailWithBuffer(pdfBuffer, recipientEmail, senderName = "Dawn News Bot") {
+    let transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: EMAIL_CONFIG.USER,
+            pass: EMAIL_CONFIG.APP_PASSWORD
+        }
+    });
+
+    let mailOptions = {
+        from: EMAIL_CONFIG.USER,
+        to: recipientEmail,
+        subject: 'Your Daily Dawn News Editorial Vocabulary & Phrases',
+        text: 'Attached is your requested PDF document containing vocabulary and phrases from recent Dawn editorials.',
+        attachments: [
+            {
+                filename: 'DawnEditorialVocabulary.pdf',
+                content: pdfBuffer
+            }
+        ]
+    };
+
+    try {
+        const info = await transporter.sendMail(mailOptions);
+        console.log('PDF sent successfully!');
+        console.log('Message ID:', info.messageId);
+
+        await logSentEmail({
+            recipientEmail,
+            pdfFileName: 'DawnEditorialVocabulary.pdf',
+            senderName,
+            messageId: info.messageId
+        });
+    } catch (error) {
+        console.error('❌ Error sending PDF:', error);
+        throw error;
+    }
+}
+
+// Export the functions
+export { runAll };
 
 /**
  * The core scraping and AI processing logic, separated to be called by runAll.
