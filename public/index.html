@@ -87,11 +87,21 @@
         const endDate = document.getElementById('endDate').value;
         const email = document.getElementById('email').value;
 
-        // Validate inputs
+        // Enhanced validation
         if (!startDate || !endDate || !email) {
             statusDiv.style.display = 'block';
             statusDiv.className = 'error';
             statusDiv.textContent = 'Please fill in all fields';
+            return;
+        }
+
+        // Validate date range
+        const startDateTime = new Date(startDate).getTime();
+        const endDateTime = new Date(endDate).getTime();
+        if (endDateTime < startDateTime) {
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'error';
+            statusDiv.textContent = 'End date must be after start date';
             return;
         }
 
@@ -100,12 +110,10 @@
         statusDiv.style.display = 'none';
         
         try {
-            const apiUrl = 'https://dawn-eds.vercel.app/api/generate';
-            const response = await fetch(apiUrl, {
+            const response = await fetch('/api/generate', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     startDate: formatDate(new Date(startDate)),
@@ -114,21 +122,31 @@
                 })
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+            let data;
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                data = await response.json();
+            } else {
+                throw new Error('Server returned non-JSON response');
             }
 
-            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.message || `Server error (${response.status}): ${data.error || 'Unknown error'}`);
+            }
             
             statusDiv.style.display = 'block';
             statusDiv.className = 'success';
             statusDiv.textContent = data.message || 'Request processed successfully!';
         } catch (error) {
-            console.error('Error details:', error);
+            console.error('Error details:', {
+                message: error.message,
+                stack: error.stack,
+                name: error.name
+            });
+            
             statusDiv.style.display = 'block';
             statusDiv.className = 'error';
-            statusDiv.textContent = error.message || 'An error occurred while processing your request';
+            statusDiv.textContent = `Error: ${error.message}. Please try again later.`;
         } finally {
             submitButton.disabled = false;
             submitButton.textContent = 'Generate and Send PDF';
