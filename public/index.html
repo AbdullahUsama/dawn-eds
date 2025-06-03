@@ -151,20 +151,22 @@
         submitButton.textContent = 'Processing...';
         statusDiv.style.display = 'none';
         
-        try {
-            const response = await fetch('/generate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    startDate: formatDate(new Date(startDate)),
-                    endDate: formatDate(new Date(endDate)),
-                    email
-                })
-            });
+        // In your index.html script section, update the fetch call:
+try {
+    const response = await fetch('/api/generate', { // Update this line
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            startDate: formatDate(new Date(startDate)),
+            endDate: formatDate(new Date(endDate)),
+            email
+        })
+    });
 
-            const data = await response.json();
+    const data = await response.json();
+    
             
             statusDiv.style.display = 'block';
             statusDiv.className = data.success ? 'success' : 'error';
