@@ -73,59 +73,67 @@
         <div id="status"></div>
     </div>
 
-    <script>
-        function formatDate(date) {
-            return date.toISOString().split('T')[0];
+   <script>
+    function formatDate(date) {
+        return date.toISOString().split('T')[0];
+    }
+
+    document.getElementById('generatorForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const statusDiv = document.getElementById('status');
+        const submitButton = e.target.querySelector('button');
+        
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const email = document.getElementById('email').value;
+
+        // Validate inputs
+        if (!startDate || !endDate || !email) {
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'error';
+            statusDiv.textContent = 'Please fill in all fields';
+            return;
         }
 
-        document.getElementById('generatorForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const statusDiv = document.getElementById('status');
-            const submitButton = e.target.querySelector('button');
-            
-            const startDate = document.getElementById('startDate').value;
-            const endDate = document.getElementById('endDate').value;
-            const email = document.getElementById('email').value;
+        submitButton.disabled = true;
+        submitButton.textContent = 'Processing...';
+        statusDiv.style.display = 'none';
+        
+        try {
+            const apiUrl = 'https://dawn-eds.vercel.app/api/generate';
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    startDate: formatDate(new Date(startDate)),
+                    endDate: formatDate(new Date(endDate)),
+                    email
+                })
+            });
 
-            // Validate inputs
-            if (!startDate || !endDate || !email) {
-                statusDiv.style.display = 'block';
-                statusDiv.className = 'error';
-                statusDiv.textContent = 'Please fill in all fields';
-                return;
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
             }
 
-            submitButton.disabled = true;
-            submitButton.textContent = 'Processing...';
-            statusDiv.style.display = 'none';
+            const data = await response.json();
             
-            try {
-                const response = await fetch('/api/generate', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        startDate: formatDate(new Date(startDate)),
-                        endDate: formatDate(new Date(endDate)),
-                        email
-                    })
-                });
-
-                const data = await response.json();
-                
-                statusDiv.style.display = 'block';
-                statusDiv.className = data.success ? 'success' : 'error';
-                statusDiv.textContent = data.message;
-            } catch (error) {
-                statusDiv.style.display = 'block';
-                statusDiv.className = 'error';
-                statusDiv.textContent = 'An error occurred while processing your request';
-            } finally {
-                submitButton.disabled = false;
-                submitButton.textContent = 'Generate and Send PDF';
-            }
-        });
-    </script>
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'success';
+            statusDiv.textContent = data.message || 'Request processed successfully!';
+        } catch (error) {
+            console.error('Error details:', error);
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'error';
+            statusDiv.textContent = error.message || 'An error occurred while processing your request';
+        } finally {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Generate and Send PDF';
+        }
+    });
+</script>
 </body>
 </html>

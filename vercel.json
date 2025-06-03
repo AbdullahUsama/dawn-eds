@@ -5,10 +5,16 @@
     { "src": "public/**", "use": "@vercel/static" }
   ],
   "routes": [
-    { "src": "/api/generate", "dest": "/api/generate.js" },
+    {
+      "src": "/api/generate",
+      "methods": ["POST", "OPTIONS"],
+      "headers": {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "Content-Type, Accept",
+        "Access-Control-Allow-Methods": "POST, OPTIONS"
+      },
+      "dest": "/api/generate.js"
+    },
     { "src": "/(.*)", "dest": "/public/$1" }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }
