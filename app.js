@@ -355,14 +355,16 @@ async function sendPdfByEmail(pdfPath, recipientEmail, senderName = "Dawn News B
     }
 }
 
+// ...existing imports...
+
 /**
  * Main function to run the entire process: scrape, process, generate PDF, and optionally email.
  * @param {string} startDate - The start date for editorial scraping (YYYY-MM-DD).
  * @param {string} endDate - The end date for editorial scraping (YYYY-MM-DD).
  * @param {string} recipientEmail - The email address to send the PDF to.
  * @param {boolean} [closeDb=true] - Whether to close the DB connection after completion.
+ * @param {boolean} [isVercel=false] - Whether the code is running on Vercel.
  */
-// Modify the runAll function
 async function runAll(startDate, endDate, recipientEmail, closeDb = true, isVercel = false) {
     try {
         console.log(`🚀 Starting process for ${startDate} to ${endDate}...`);
@@ -370,23 +372,19 @@ async function runAll(startDate, endDate, recipientEmail, closeDb = true, isVerc
         // 1. Scrape and process articles with AI
         const articlesData = await mainScrapingAndAI(startDate, endDate);
         
-        // 2. Generate PDF in memory when on Vercel
+        // 2. Generate PDF based on environment
         let pdfBuffer;
         if (isVercel) {
-            // Generate PDF in memory
             pdfBuffer = await generatePDFInMemory(articlesData, startDate, endDate);
         } else {
-            // Generate PDF as file when running locally
             await loadDataAndGeneratePDF(FILE_PATHS.JSON_OUTPUT, FILE_PATHS.PDF_OUTPUT, startDate, endDate);
         }
 
         // 3. Send email
         if (recipientEmail) {
             if (isVercel) {
-                // Send using buffer
                 await sendPdfByEmailWithBuffer(pdfBuffer, recipientEmail);
             } else {
-                // Send using file
                 await sendPdfByEmail(FILE_PATHS.PDF_OUTPUT, recipientEmail);
             }
         }
@@ -399,6 +397,10 @@ async function runAll(startDate, endDate, recipientEmail, closeDb = true, isVerc
         throw error;
     }
 }
+
+// Remove any other exports of runAll in the file
+// Add a single export at the end of the file
+export { runAll };
 
 // Add new function to generate PDF in memory
 async function generatePDFInMemory(articlesData, startDate, endDate) {
@@ -462,7 +464,7 @@ async function sendPdfByEmailWithBuffer(pdfBuffer, recipientEmail, senderName = 
 }
 
 // Export the functions
-export { runAll };
+// export { runAll };
 
 /**
  * The core scraping and AI processing logic, separated to be called by runAll.
@@ -497,4 +499,4 @@ async function mainScrapingAndAI(startDate, endDate) {
 // runAll(DEFAULT_DATES.START_DATE, DEFAULT_DATES.END_DATE, RECIPIENT_EMAIL).catch(console.error);
 
 // Add this line at the end of app.js
-export { runAll };
+// export { runAll };
