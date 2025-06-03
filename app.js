@@ -405,22 +405,79 @@ export { runAll };
 // Add new function to generate PDF in memory
 async function generatePDFInMemory(articlesData, startDate, endDate) {
     return new Promise((resolve, reject) => {
-        const chunks = [];
-        const doc = new PDFDocument();
-        
-        doc.on('data', chunk => chunks.push(chunk));
-        doc.on('end', () => resolve(Buffer.concat(chunks)));
-        doc.on('error', reject);
+        try {
+            const chunks = [];
+            const doc = new PDFDocument();
+            
+            doc.on('data', chunk => chunks.push(chunk));
+            doc.on('end', () => resolve(Buffer.concat(chunks)));
+            doc.on('error', reject);
 
-        // Your existing PDF generation logic here
-        doc.font('Times-Bold').fontSize(24).text("Editorial Articles Vocabulary", {
-            align: "center",
-        });
-        // ...rest of your PDF generation code...
+            // Header
+            doc.font('Times-Roman');
+            doc.fontSize(24).text("Dawn Editorial Vocabulary & Phrases", { align: "center" });
+            doc.fontSize(12).text(`${startDate} to ${endDate}`, { align: "center" });
+            doc.fontSize(10).fillColor('gray').text("created by csshelp.vercel.app", { align: "center" });
+            doc.fillColor('black');
+            doc.moveDown(2);
 
-        doc.end();
+            // Articles
+            articlesData.forEach((article, index) => {
+                if (index > 0) {
+                    doc.addPage();
+                }
+
+                doc.fontSize(18)
+                   .font('Times-Bold')
+                   .text(`${index + 1}. ${article.title}`, { underline: true });
+                doc.moveDown(0.5);
+
+                // Words Section
+                if (article.words) {
+                    doc.fontSize(14)
+                       .font('Times-Bold')
+                       .text("Vocabulary Words:");
+                    doc.moveDown(0.2);
+                    doc.font('Times-Roman');
+                    
+                    const cleanedWords = article.words
+                        .split('\n')
+                        .filter(line => line.trim() !== '')
+                        .map(line => line.replace(/^\s*\*\s*\d*\.\s*\*\*Words:\*\*|^[\s\*\-]+/, '').trim())
+                        .filter(line => line !== '');
+
+                    cleanedWords.forEach(wordEntry => {
+                        doc.fontSize(12).text(`  ${wordEntry}`);
+                    });
+                    doc.moveDown(0.5);
+                }
+
+                // Phrases Section
+                if (article.phrases) {
+                    doc.fontSize(14)
+                       .font('Times-Bold')
+                       .text("Phrases & Idioms:");
+                    doc.moveDown(0.2);
+                    doc.font('Times-Roman');
+                    
+                    const cleanedPhrases = article.phrases
+                        .split('\n')
+                        .filter(line => line.trim() !== '')
+                        .map(line => line.replace(/^\s*\*\s*\d*\.\s*\*\*Phrases and Idioms:\*\*|^[\s\*\-]+/, '').trim())
+                        .filter(line => line !== '');
+
+                    cleanedPhrases.forEach(phraseEntry => {
+                        doc.fontSize(12).text(`  ${phraseEntry}`);
+                    });
+                    doc.moveDown(1);
+                }
+            });
+
+            doc.end();
+        } catch (error) {
+            reject(error);
+        }
     });
-
 }
 
 // Add new function to send email with buffer
