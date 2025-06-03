@@ -1,3 +1,5 @@
+import { connectToMongo } from '../db.js';
+import { runAll } from '../app.js';
 export default async function handler(req, res) {
     // Add error logging
     process.on('unhandledRejection', (reason, promise) => {
